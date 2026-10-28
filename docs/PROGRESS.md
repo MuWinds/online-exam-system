@@ -40,8 +40,9 @@
 ## 本次变更
 
 新增backend任务2包、frontend任务2管理页、task2候选SQL；任务3通过ExamGateway接入数据库考试数据；更新API/数据库契约和启动说明。
+补充Docker Compose本地演示编排：MySQL初始化、Spring Boot后端和Nginx前端，默认入口为`http://127.0.0.1:8088`；已通过Compose配置解析、前端测试和构建，容器实际启动因当前环境无法访问Docker Hub未完成。
 demo必须显式启用，固定身份和试卷只用于独立演示；正式配置需要真实适配器。
-本轮未提交、合并、变基或推送，未改动main/develop。
+本轮未修改main/develop；Docker Compose变更在当前`feature/paper-exam`分支单独提交。
 原有未跟踪确认单保留并补充用户转述的确认记录。
 
 ## 交接重点

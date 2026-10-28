@@ -45,6 +45,20 @@ java "-Djdk.net.unixdomain.tmpdir=$((Resolve-Path backend/target).Path)" -jar ba
 
 demo使用内存H2数据库，重启清空。不要把demo配置用于共享环境或正式部署。默认没有启用demo，没有真实适配器时启动失败是预期行为。
 
+## Docker Compose演示
+
+仓库根目录执行以下命令可启动MySQL、Spring Boot后端和Nginx前端：
+
+```powershell
+docker compose up --build
+```
+
+打开 http://127.0.0.1:8088。Compose使用MySQL初始化脚本和固定演示身份，学生凭证为
+`Bearer demo-student`，教师凭证为 `Bearer demo-teacher`。数据库数据保存在
+`mysql-data`卷中；需要重新执行初始化脚本时先执行 `docker compose down -v`。
+默认开发密码仅用于本地演示，可通过根目录`.env`中的`DB_PASSWORD`和
+`MYSQL_ROOT_PASSWORD`覆盖，禁止用于共享或生产环境。
+
 ## MySQL与上游整合
 
 1. 任务2先审阅 `sql/task2.sql`、`sql/task3.sql` 和 `docs/DATABASE-CONTRACT.md`，合并详细字段到总SQL，再在MySQL8环境导入。脚本不会迁移已有表。
