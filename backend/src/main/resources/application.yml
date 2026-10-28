@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: answer-score
+  jackson:
+    time-zone: Asia/Shanghai
+  sql:
+    init:
+      mode: never
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+server:
+  address: 127.0.0.1
+  port: 8080

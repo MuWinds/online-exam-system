@@ -1,219 +1,74 @@
-# API 契约草案
+# API 契约与任务3联调说明
 
-> 状态：**待全组确认**
->
-> 本文仅用于任务拆分和联调前讨论，不代表最终接口。所有公共端点、参数、字段、错误码、权限和业务规则均须全组确认后实施。
+## 确认状态
 
-## 1. 暂定基础约定
+2026-10-28，用户转述任务1与任务2均对公共确认单无异议。公共标准按 TEAM-CONTRACT-CONFIRMATION.md 执行：/api、数字 code、北京时间、Bearer Token、三种客观题。
+本文请求与响应详细字段属于任务3已实现的联调方案，仍需对应成员对照真实模块确认；不表示上游接口已交付。
 
-| 项目 | 候选约定 | 状态 |
-| --- | --- | --- |
-| API 前缀 | `/api/v1` | 待全组确认 |
-| 数据格式 | `application/json; charset=UTF-8` | 待全组确认 |
-| 鉴权方式 | `Authorization: Bearer <token>` | 待全组确认 |
-| 时间格式 | ISO 8601，例如 `2026-10-28T20:00:00+08:00` | 待全组确认 |
-| 分页参数 | `page` 从 1 开始，`size` 表示每页数量 | 待全组确认 |
-| 分数格式 | 十进制定点数，建议保留 2 位小数 | 待全组确认 |
-| 幂等策略 | 交卷接口按答卷 ID 保证幂等 | 待全组确认 |
+## 公共格式
 
-## 2. 公共响应结构
+成功：`{"code":200,"message":"success","data":{}}`。
+失败时 HTTP 状态和 code 一致；400参数错误、401未登录、403越权、404资源不存在、409状态或版本冲突、500服务异常。
+日期：yyyy-MM-dd HH:mm:ss，北京时间；Java使用Long的ID在当前JSON中输出数字，前端当前仅支持JS安全整数范围，若团队使用雪花ID需联调改为字符串。
+角色：ADMIN、TEACHER、STUDENT。当前用户从 IdentityGateway.resolve 的已验证身份获取，不能由请求体传 userId。
 
-以下字段全部为候选公共字段。
+## 已实现接口
 
-| 字段 | 候选类型 | 说明 | 状态 |
+| 方法 | 路径 | 权限 | data |
 | --- | --- | --- | --- |
-| `code` | string | 业务状态码 | 待全组确认 |
-| `message` | string | 面向调用方的结果说明 | 待全组确认 |
-| `data` | object / array / null | 业务数据 | 待全组确认 |
-| `traceId` | string | 请求追踪标识 | 待全组确认 |
-| `timestamp` | string | 服务端响应时间 | 待全组确认 |
+| POST | /api/exams/{examId}/start | 已报名学生 | Context，首次开始或恢复原答卷 |
+| GET | /api/attempts/{id} | 答卷本人 | Context |
+| PUT | /api/attempts/{id}/answers | 答卷本人 | 更新后的 Context |
+| POST | /api/attempts/{id}/submit | 答卷本人 | Result，重复交卷返回同一成绩 |
+| GET | /api/attempts/{id}/result | 答卷本人 | Result，未交卷返回409 |
+| GET | /api/scores/my?page=1&size=10 | 学生 | records、total、page、size |
+| GET | /api/exams/{examId}/statistics | 本考试教师/管理员 | Statistics |
 
-候选示例：
+GET /api/attempts/{id} 是为刷新恢复补充的接口，待全组联调确认。其他上游端点由对应成员实现。
+
+## 保存请求
 
 ```json
 {
-  "code": "OK",
-  "message": "success",
-  "data": {},
-  "traceId": "candidate-trace-id",
-  "timestamp": "2026-10-28T20:00:00+08:00"
+  "version": 0,
+  "answers": [
+    {"questionId": 11, "answer": ["A"]},
+    {"questionId": 12, "answer": ["B", "A"]},
+    {"questionId": 13, "answer": ["TRUE"]}
+  ]
 }
 ```
 
-## 3. 在线答题接口
+version为必填，使用最新Context中的值。单选和判断最多一个值，多选按集合判分，空数组清空答案。
+本次列表只更新列出的题目；题目重复、无效题目、无效选项或版本冲突时不写入该批答案。交卷后或截止时刻到达后不能再保存。
+选项key由上游提供稳定标识；演示判断题使用TRUE/FALSE，真实格式待任务1联调确认。
 
-| 方法 | 候选路径 | 用途 | 候选权限 | 状态 |
-| --- | --- | --- | --- | --- |
-| `POST` | `/api/v1/exams/{examId}/attempts` | 创建或恢复一次答题 | 考生 | 待全组确认 |
-| `GET` | `/api/v1/attempts/{attemptId}` | 获取答题上下文与已保存答案 | 考生本人 | 待全组确认 |
-| `PUT` | `/api/v1/attempts/{attemptId}/answers/{questionId}` | 保存或更新单题答案 | 考生本人 | 待全组确认 |
-| `POST` | `/api/v1/attempts/{attemptId}/submit` | 提交答卷并触发评分 | 考生本人 | 待全组确认 |
+## DTO 字段
 
-### 3.1 创建或恢复答题
+所有详细字段为任务3联调提案，待全组确认。
 
-候选请求字段：
+| DTO | 字段 |
+| --- | --- |
+| Context | attemptId、examId、examTitle、status、deadlineAt、serverTime、version、questions、answers |
+| questions[] | questionId、type、content、options、score |
+| options[] | key、label |
+| answers | questionId为键、字符串数组为值的对象 |
+| Result | attemptId、examId、examTitle、studentId、totalScore、maxScore、submissionType、submittedAt |
+| Statistics | participantCount、gradedCount、averageScore、maxScore、minScore、passCount、passRate、distribution |
 
-| 字段 | 候选类型 | 必填 | 说明 | 状态 |
-| --- | --- | --- | --- | --- |
-| `examId` | long（路径参数） | 是 | 考试 ID | 待全组确认 |
-| `clientRequestId` | string | 否 | 客户端幂等请求标识 | 待全组确认 |
+status结束后为GRADED，submissionType保留SUBMITTED或AUTO_SUBMITTED。后台同步评分在同一事务中完成。
+试卷标准答案只保存在服务端快照中，不作为学生响应的一部分。
+及格暂按卷面分数60%，passRate为0到100的百分数；distribution以卷面得分百分比分段。
+没有已评分记录时平均/最高/最低分为null，及格率0.00。统计暂采用实时聚合，详细口径待全组确认。
 
-候选响应字段：
+## 上游接入
 
-| 字段 | 候选类型 | 说明 | 状态 |
-| --- | --- | --- | --- |
-| `attemptId` | long | 答卷 ID | 待全组确认 |
-| `examId` | long | 考试 ID | 待全组确认 |
-| `status` | string | `IN_PROGRESS`、`SUBMITTED` 等候选状态 | 待全组确认 |
-| `startedAt` | string | 开始时间 | 待全组确认 |
-| `deadlineAt` | string | 本次作答截止时间 | 待全组确认 |
-| `remainingSeconds` | long | 服务端计算的剩余秒数 | 待全组确认 |
+- 任务1实现 IdentityGateway：校验Bearer Token，返回可信Actor。demo凭证不得用于正式鉴权。
+- 任务2联合任务1实现 ExamGateway：校验学生报名资格，返回发布时间、考试时间、教师归属、卷面分值和仅服务端可见的标准答案。
+- 开始考试校验已发布和时间；当前实现截止时间为考试结束时间。若团队增加独立作答时长，需共同修改deadline规则。
+- 本版只有SINGLE_CHOICE、MULTIPLE_CHOICE、JUDGE；主观题和人工评分留待扩展。
+- 公共工程整合时保留团队唯一启动类，导入任务3组件、Mapper和配置，替换演示适配器。
 
-### 3.2 获取答题上下文
+## 待联调事项
 
-候选响应字段：
-
-| 字段 | 候选类型 | 说明 | 状态 |
-| --- | --- | --- | --- |
-| `attemptId` | long | 答卷 ID | 待全组确认 |
-| `examTitle` | string | 考试标题 | 待全组确认 |
-| `status` | string | 当前答题状态 | 待全组确认 |
-| `deadlineAt` | string | 截止时间 | 待全组确认 |
-| `questions` | array | 题目列表，不应包含标准答案 | 待全组确认 |
-| `answers` | array | 已保存答案 | 待全组确认 |
-
-候选 `questions[]` 字段：
-
-| 字段 | 候选类型 | 说明 | 状态 |
-| --- | --- | --- | --- |
-| `questionId` | long | 试题 ID | 待全组确认 |
-| `type` | string | 单选、多选、判断、填空、简答等 | 待全组确认 |
-| `content` | string | 题干 | 待全组确认 |
-| `options` | array | 选项；非选择题可为空 | 待全组确认 |
-| `score` | decimal | 题目分值 | 待全组确认 |
-| `orderNo` | integer | 展示顺序 | 待全组确认 |
-
-### 3.3 保存单题答案
-
-候选请求字段：
-
-| 字段 | 候选类型 | 必填 | 说明 | 状态 |
-| --- | --- | --- | --- | --- |
-| `attemptId` | long（路径参数） | 是 | 答卷 ID | 待全组确认 |
-| `questionId` | long（路径参数） | 是 | 试题 ID | 待全组确认 |
-| `answer` | string / array / object | 是 | 按题型保存的作答内容 | 待全组确认 |
-| `clientUpdatedAt` | string | 否 | 客户端最后修改时间 | 待全组确认 |
-| `version` | integer | 否 | 乐观锁版本号 | 待全组确认 |
-
-候选响应字段：
-
-| 字段 | 候选类型 | 说明 | 状态 |
-| --- | --- | --- | --- |
-| `savedAt` | string | 服务端保存时间 | 待全组确认 |
-| `version` | integer | 最新版本号 | 待全组确认 |
-
-### 3.4 提交答卷
-
-候选请求字段：
-
-| 字段 | 候选类型 | 必填 | 说明 | 状态 |
-| --- | --- | --- | --- | --- |
-| `attemptId` | long（路径参数） | 是 | 答卷 ID | 待全组确认 |
-| `clientRequestId` | string | 否 | 防止重复提交的幂等标识 | 待全组确认 |
-
-候选响应字段：
-
-| 字段 | 候选类型 | 说明 | 状态 |
-| --- | --- | --- | --- |
-| `attemptId` | long | 答卷 ID | 待全组确认 |
-| `status` | string | `SUBMITTED`、`AUTO_GRADED`、`PENDING_REVIEW` 等 | 待全组确认 |
-| `submittedAt` | string | 实际交卷时间 | 待全组确认 |
-| `objectiveScore` | decimal / null | 客观题得分 | 待全组确认 |
-| `totalScore` | decimal / null | 总分；待人工评分时可为空 | 待全组确认 |
-
-## 4. 评分接口
-
-| 方法 | 候选路径 | 用途 | 候选权限 | 状态 |
-| --- | --- | --- | --- | --- |
-| `POST` | `/api/v1/attempts/{attemptId}/grade` | 触发或重试自动评分 | 教师/管理员或内部服务 | 待全组确认 |
-| `PUT` | `/api/v1/attempts/{attemptId}/answers/{questionId}/score` | 录入主观题得分 | 教师/管理员 | 待全组确认 |
-| `POST` | `/api/v1/attempts/{attemptId}/finalize-score` | 汇总并发布最终成绩 | 教师/管理员 | 待全组确认 |
-
-候选人工评分请求字段：
-
-| 字段 | 候选类型 | 必填 | 说明 | 状态 |
-| --- | --- | --- | --- | --- |
-| `score` | decimal | 是 | 本题得分 | 待全组确认 |
-| `comment` | string | 否 | 评语 | 待全组确认 |
-| `version` | integer | 否 | 防止并发覆盖 | 待全组确认 |
-
-## 5. 成绩查询接口
-
-| 方法 | 候选路径 | 用途 | 候选权限 | 状态 |
-| --- | --- | --- | --- | --- |
-| `GET` | `/api/v1/me/results` | 查询当前考生的成绩列表 | 考生 | 待全组确认 |
-| `GET` | `/api/v1/results/{resultId}` | 查询单次成绩详情 | 本人/教师/管理员 | 待全组确认 |
-| `GET` | `/api/v1/exams/{examId}/results` | 分页查询某考试成绩 | 教师/管理员 | 待全组确认 |
-
-候选成绩字段：
-
-| 字段 | 候选类型 | 说明 | 状态 |
-| --- | --- | --- | --- |
-| `resultId` | long | 成绩记录 ID | 待全组确认 |
-| `examId` | long | 考试 ID | 待全组确认 |
-| `examTitle` | string | 考试标题 | 待全组确认 |
-| `userId` | long | 考生 ID | 待全组确认 |
-| `objectiveScore` | decimal | 客观题得分 | 待全组确认 |
-| `subjectiveScore` | decimal | 主观题得分 | 待全组确认 |
-| `totalScore` | decimal | 总分 | 待全组确认 |
-| `status` | string | 评分或发布状态 | 待全组确认 |
-| `submittedAt` | string | 交卷时间 | 待全组确认 |
-| `publishedAt` | string / null | 成绩发布时间 | 待全组确认 |
-
-## 6. 成绩统计接口
-
-| 方法 | 候选路径 | 用途 | 候选权限 | 状态 |
-| --- | --- | --- | --- | --- |
-| `GET` | `/api/v1/exams/{examId}/statistics` | 获取考试总体统计 | 教师/管理员 | 待全组确认 |
-| `GET` | `/api/v1/exams/{examId}/statistics/distribution` | 获取分数段分布 | 教师/管理员 | 待全组确认 |
-| `GET` | `/api/v1/exams/{examId}/statistics/questions` | 获取逐题统计 | 教师/管理员 | 待全组确认 |
-
-候选总体统计字段：
-
-| 字段 | 候选类型 | 说明 | 状态 |
-| --- | --- | --- | --- |
-| `participantCount` | long | 参与人数 | 待全组确认 |
-| `submittedCount` | long | 已交卷人数 | 待全组确认 |
-| `gradedCount` | long | 已完成评分人数 | 待全组确认 |
-| `averageScore` | decimal | 平均分 | 待全组确认 |
-| `maxScore` | decimal | 最高分 | 待全组确认 |
-| `minScore` | decimal | 最低分 | 待全组确认 |
-| `passCount` | long | 及格人数 | 待全组确认 |
-| `passRate` | decimal | 及格率 | 待全组确认 |
-| `distribution` | array | 分数段分布 | 待全组确认 |
-
-## 7. 候选错误码
-
-| HTTP 状态 | 候选业务码 | 场景 | 状态 |
-| --- | --- | --- | --- |
-| `400` | `INVALID_ARGUMENT` | 参数格式或业务参数不合法 | 待全组确认 |
-| `401` | `UNAUTHORIZED` | 未登录或凭证失效 | 待全组确认 |
-| `403` | `FORBIDDEN` | 无权访问答卷或成绩 | 待全组确认 |
-| `404` | `EXAM_NOT_FOUND` | 考试不存在 | 待全组确认 |
-| `404` | `ATTEMPT_NOT_FOUND` | 答卷不存在 | 待全组确认 |
-| `409` | `ATTEMPT_ALREADY_SUBMITTED` | 已交卷后继续作答 | 待全组确认 |
-| `409` | `ANSWER_VERSION_CONFLICT` | 答案版本冲突 | 待全组确认 |
-| `422` | `EXAM_NOT_AVAILABLE` | 未到开考时间或已结束 | 待全组确认 |
-| `500` | `INTERNAL_ERROR` | 未分类服务端错误 | 待全组确认 |
-
-## 8. 全组评审清单
-
-- 用户、考试、试卷、试题和答卷 ID 的类型与命名。
-- 鉴权方案、角色名称与数据权限边界。
-- 答案的统一存储格式以及各题型编码。
-- 自动保存频率、版本冲突处理与断网恢复策略。
-- 交卷幂等、超时自动交卷和迟交规则。
-- 客观题评分规则，多选题是否允许部分得分。
-- 主观题评分及成绩发布流程。
-- 分页、排序、时间、分数精度、错误码和公共响应格式。
-- 成绩统计口径及未完成评分记录是否纳入统计。
+上游详细字段、稳定选项key、主键生成策略及JSON大整数、教师权限范围、题目快照策略、及格线来源、独立时长、多次补考和MySQL实机事务行为。
