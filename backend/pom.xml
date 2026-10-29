@@ -13,7 +13,7 @@
   <build>
     <resources>
       <resource><directory>src/main/resources</directory></resource>
-      <resource><directory>../sql</directory><includes><include>task3.sql</include></includes></resource>
+      <resource><directory>../sql</directory><includes><include>task2.sql</include><include>task2-demo.sql</include><include>task2-seed.sql</include><include>task3.sql</include></includes></resource>
     </resources>
     <plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin></plugins>
   </build>

@@ -7,4 +7,5 @@ spring:
   sql:
     init:
       mode: always
-      schema-locations: classpath:task3.sql
+      schema-locations: classpath:task2-demo.sql,classpath:task2.sql,classpath:task3.sql
+      data-locations: classpath:task2-seed.sql

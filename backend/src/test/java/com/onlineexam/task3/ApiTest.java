@@ -26,4 +26,5 @@ class ApiTest {
         mvc.perform(put("/api/attempts/1/answers").header("Authorization","Bearer demo-student").contentType("application/json").content("{"))
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value(400));
     }
+
 }

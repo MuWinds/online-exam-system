@@ -3,6 +3,7 @@ import { ref, computed, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { request } from './api'
 import { payload, remainingSeconds, makeSaveQueue } from './answer-state'
+import PaperExamAdmin from './PaperExamAdmin.vue'
 
 const token = ref(sessionStorage.getItem('task3-token') || '')
 const examId = ref(1), tab = ref('answer'), context = ref(null), answers = ref({}), result = ref(null)
@@ -83,13 +84,16 @@ onUnmounted(() => clearInterval(timer))
   <main>
     <header><div><small>ONLINE EXAM / TASK 03</small><h1>答题与成绩中心</h1><p>在线作答 · 自动评分 · 成绩统计</p></div><el-tag size="large">任务3独立联调页</el-tag></header>
     <el-alert title="演示需后端启用 demo 配置。演示数据存于内存，重启后清空；正式环境请接入团队登录与考试模块。" type="info" :closable="false" show-icon />
-    <section class="toolbar">
+    <form class="toolbar" @submit.prevent>
       <label>访问凭证 <el-input v-model="token" type="password" show-password placeholder="输入团队登录返回的Token" :disabled="busy" @change="identityChanged" /></label>
       <label>演示身份 <el-select placeholder="选择后填入演示凭证" :disabled="busy" @change="value => { token = value; identityChanged() }"><el-option label="学生一" value="demo-student"/><el-option label="学生二" value="demo-student-2"/><el-option label="教师" value="demo-teacher"/></el-select></label>
       <label>考试ID <el-input-number v-model="examId" :min="1" :max="2147483647" :disabled="busy || editable"/></label>
-    </section>
+    </form>
     <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon />
     <el-tabs v-model="tab">
+      <el-tab-pane label="试卷与考试" name="management">
+        <PaperExamAdmin :token="token" @select-exam="id => { examId = id; tab = 'answer'; start() }" />
+      </el-tab-pane>
       <el-tab-pane label="在线答题" name="answer">
         <div class="actions"><el-button type="primary" :loading="busy" @click="start">进入 / 恢复考试</el-button><el-button v-if="context" :disabled="busy" @click="reload">重新载入服务端答案</el-button></div>
         <template v-if="context">
