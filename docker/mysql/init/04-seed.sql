@@ -1,3 +1,5 @@
+SET NAMES utf8mb4;
+
 INSERT INTO question
   (id, created_by, question_type, content, standard_answer, score, status)
 VALUES

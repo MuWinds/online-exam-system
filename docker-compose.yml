@@ -13,10 +13,11 @@ services:
       - --default-time-zone=+08:00
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./docker/mysql/init/01-question.sql:/docker-entrypoint-initdb.d/01-question.sql:ro
-      - ./sql/task2.sql:/docker-entrypoint-initdb.d/02-task2.sql:ro
-      - ./sql/task3.sql:/docker-entrypoint-initdb.d/03-task3.sql:ro
-      - ./docker/mysql/init/04-seed.sql:/docker-entrypoint-initdb.d/04-seed.sql:ro
+      - ./sql/auth-question.sql:/docker-entrypoint-initdb.d/00-auth-question.sql:ro
+      - ./docker/mysql/init/01-auth-seed.sql:/docker-entrypoint-initdb.d/01-auth-seed.sql:ro
+      - ./sql/paper-exam.sql:/docker-entrypoint-initdb.d/02-paper-exam.sql:ro
+      - ./sql/answer-score.sql:/docker-entrypoint-initdb.d/03-answer-score.sql:ro
+      - ./docker/mysql/init/04-seed.sql:/docker-entrypoint-initdb.d/04-exam-seed.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
       interval: 5s
@@ -34,6 +35,8 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/online_exam?serverTimezone=Asia/Shanghai&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true
       DB_USER: exam
       DB_PASSWORD: ${DB_PASSWORD:-exam_dev_password}
+      APP_DEMO_PASSWORD: ${APP_DEMO_PASSWORD:-123456}
+      JWT_SECRET: ${JWT_SECRET:-local-docker-jwt-secret-change-before-sharing}
     depends_on:
       mysql:
         condition: service_healthy

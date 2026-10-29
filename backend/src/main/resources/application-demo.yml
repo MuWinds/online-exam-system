@@ -1,11 +1,16 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:task3;MODE=MySQL;DB_CLOSE_DELAY=-1
+    url: jdbc:h2:mem:online_exam;MODE=MySQL;DB_CLOSE_DELAY=-1
     username: sa
     password:
     driver-class-name: org.h2.Driver
   sql:
     init:
       mode: always
-      schema-locations: classpath:task2-demo.sql,classpath:task2.sql,classpath:task3.sql
-      data-locations: classpath:task2-seed.sql
+      schema-locations: classpath:demo-question.sql,classpath:paper-exam.sql,classpath:answer-score.sql
+      data-locations: classpath:exam-seed.sql
+
+app:
+  jwt:
+    secret: local-demo-jwt-secret-change-before-use
+    expire-seconds: 7200

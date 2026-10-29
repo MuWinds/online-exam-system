@@ -1,9 +1,9 @@
-# API 契约与任务3联调说明
+# API 契约与系统联调说明
 
 ## 确认状态
 
 2026-10-28，用户转述任务1与任务2均对公共确认单无异议。公共标准按 TEAM-CONTRACT-CONFIRMATION.md 执行：/api、数字 code、北京时间、Bearer Token、三种客观题。
-本文请求与响应详细字段属于任务3已实现的联调方案，仍需对应成员对照真实模块确认；不表示上游接口已交付。
+本文请求与响应详细字段属于当前整合实现，仍需各模块负责人对照最终公共契约确认；未确认的字段继续按待确认处理。
 
 ## 公共格式
 
@@ -16,7 +16,8 @@
 
 | 方法 | 路径 | 权限 | data |
 | --- | --- | --- | --- |
-| GET | /api/questions | 教师/管理员 | 可用于组卷的题目列表 |
+| GET | /api/questions | 教师/管理员 | 分页查询题库题目 |
+| GET | /api/paper-questions | 教师/管理员 | 试卷模块组卷选择器使用的题库候选列表 |
 | GET | /api/papers | 教师/管理员 | 当前用户可管理的试卷列表 |
 | POST | /api/papers | 教师/管理员 | 创建DRAFT试卷 |
 | GET | /api/papers/{id} | 试卷所有者/管理员 | PaperView |
@@ -103,10 +104,10 @@ status结束后为GRADED，submissionType保留SUBMITTED或AUTO_SUBMITTED。后�
 ## 上游接入
 
 - 任务1实现 IdentityGateway：校验Bearer Token，返回可信Actor。demo凭证不得用于正式鉴权。
-- 任务2联合任务1实现 ExamGateway：校验学生报名资格，返回发布时间、考试时间、教师归属、卷面分值和仅服务端可见的标准答案。本分支由 `com.onlineexam.task2.PaperExamService` 提供独立 demo 实现；正式配置必须提供 `ExamEligibilityGateway` 的报名/适用范围实现。
+- `com.onlineexam.paper.PaperExamService` 实现答题模块的 `ExamGateway`，校验考试/试卷关系并提供仅服务端可见的答案快照。`ExamEligibilityGateway` 当前由 demo/docker 适配器演示；正式部署必须替换为实际报名/适用范围规则。
 - 开始考试校验已发布和时间；当前实现截止时间为考试结束时间。若团队增加独立作答时长，需共同修改deadline规则。
 - 本版只有SINGLE_CHOICE、MULTIPLE_CHOICE、JUDGE；主观题和人工评分留待扩展。
-- 公共工程整合时保留团队唯一启动类，导入任务3组件、Mapper和配置，替换演示适配器。
+- 唯一启动类为 `com.onlineexam.OnlineExamApplication`；统一认证拦截器校验 JWT 并把身份提供给答题/试卷模块的 `IdentityGateway`。
 
 ## 待联调事项
 
