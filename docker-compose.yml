@@ -1,0 +1,55 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: online_exam
+      MYSQL_USER: exam
+      MYSQL_PASSWORD: ${DB_PASSWORD:-exam_dev_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-exam_root_dev_password}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./sql/auth-question.sql:/docker-entrypoint-initdb.d/00-auth-question.sql:ro
+      - ./docker/mysql/init/01-auth-seed.sql:/docker-entrypoint-initdb.d/01-auth-seed.sql:ro
+      - ./sql/paper-exam.sql:/docker-entrypoint-initdb.d/02-paper-exam.sql:ro
+      - ./sql/answer-score.sql:/docker-entrypoint-initdb.d/03-answer-score.sql:ro
+      - ./docker/mysql/init/04-seed.sql:/docker-entrypoint-initdb.d/04-exam-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_ADDRESS: 0.0.0.0
+      DB_URL: jdbc:mysql://mysql:3306/online_exam?serverTimezone=Asia/Shanghai&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true
+      DB_USER: exam
+      DB_PASSWORD: ${DB_PASSWORD:-exam_dev_password}
+      APP_DEMO_PASSWORD: ${APP_DEMO_PASSWORD:-123456}
+      JWT_SECRET: ${JWT_SECRET:-local-docker-jwt-secret-change-before-sharing}
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8088}:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql-data:
