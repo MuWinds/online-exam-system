@@ -43,3 +43,8 @@ npm run build
 ```
 
 测试范围和待验收项见 `docs/TEST-REPORT.md`；整合进度见 `docs/PROGRESS.md`。
+
+
+## 任务2、3使用（2026-11-03）
+
+学生在考试中心的“可参加考试”列表直接进入，无需记ID。教师可在试卷列表改名草稿，在未发布考试行点击编辑。新增学生账号启用后即可参加有效已发布考试。功能与边界详见docs/TASK23-COMPLETION.md，本轮测试结果见docs/TEST-REPORT.md。

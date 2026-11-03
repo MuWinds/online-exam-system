@@ -8,7 +8,8 @@ import PaperExamManagement from '@/PaperExamManagement.vue'
 
 const userStore = useUserStore()
 const token = computed(() => userStore.token)
-const examId = ref(1), tab = ref('answer'), context = ref(null), answers = ref({}), result = ref(null)
+const isStudent = computed(() => userStore.role === 'STUDENT')
+const examId = ref(1), tab = ref(userStore.role === 'STUDENT' ? 'available' : 'management'), context = ref(null), answers = ref({}), result = ref(null)
 const busy = ref(false), dirty = ref(false), error = ref(''), savedAt = ref(''), seconds = ref(0)
 const records = ref([]), page = ref(1), total = ref(0), statistics = ref(null)
 const queue = makeSaveQueue()
@@ -34,6 +35,8 @@ function identityChanged() {
   context.value = null; result.value = null; statistics.value = null; records.value = []; timedOut = false
 }
 watch(token, identityChanged)
+watch(tab, value => { if (value === 'scores' && isStudent.value) loadScores() })
+function selectExam(id) { examId.value = id; tab.value = 'answer'; start() }
 async function start() {
   await run(async () => {
     const value = await call('post', `/exams/${examId.value}/start`)
@@ -76,24 +79,27 @@ async function loadStatistics() { await run(async () => statistics.value = await
 const timer = setInterval(() => {
   seconds.value = remainingSeconds(deadline, Date.now() + offset)
   if (context.value?.status === 'ANSWERING' && seconds.value === 0 && !timedOut && !busy.value) {
-    timedOut = true; submit(true)
+    timedOut = true; submit(true).finally(() => { timedOut = context.value?.status !== 'ANSWERING' })
   }
 }, 1000)
 onUnmounted(() => clearInterval(timer))
 </script>
 
 <template>
-  <main>
+  <main class="exam-page">
     <header><div><small>ONLINE EXAM</small><h1>考试中心</h1><p>试卷管理 · 在线作答 · 成绩查询</p></div><el-tag size="large">{{ userStore.user?.realName }}</el-tag></header>
     <form class="toolbar" @submit.prevent>
       <label>考试ID <el-input-number v-model="examId" :min="1" :max="2147483647" :disabled="busy || editable"/></label>
     </form>
     <el-alert v-if="error" :title="error" type="error" :closable="false" show-icon />
     <el-tabs v-model="tab">
-      <el-tab-pane v-if="userStore.role !== 'STUDENT'" label="试卷与考试" name="management">
-        <PaperExamManagement :token="token" :role="userStore.role" @select-exam="id => { examId = id; tab = 'answer'; start() }" />
+      <el-tab-pane v-if="isStudent" label="可参加考试" name="available">
+        <PaperExamManagement :token="token" :role="userStore.role" @select-exam="selectExam" />
       </el-tab-pane>
-      <el-tab-pane label="在线答题" name="answer">
+      <el-tab-pane v-if="userStore.role !== 'STUDENT'" label="试卷与考试" name="management">
+        <PaperExamManagement :token="token" :role="userStore.role" @select-exam="selectExam" />
+      </el-tab-pane>
+      <el-tab-pane v-if="isStudent" label="在线答题" name="answer">
         <div class="actions"><el-button type="primary" :loading="busy" @click="start">进入 / 恢复考试</el-button><el-button v-if="context" :disabled="busy" @click="reload">重新载入服务端答案</el-button></div>
         <template v-if="context">
           <section class="summary"><h2>{{ context.examTitle }}</h2><span>已答 {{ answered }}/{{ context.questions.length }}</span><strong>{{ context.status === 'ANSWERING' ? timeText : '已交卷' }}</strong></section>
@@ -108,9 +114,9 @@ onUnmounted(() => clearInterval(timer))
           <div class="actions"><el-button :disabled="!editable || busy" @click="save">保存全部答案</el-button><el-button type="primary" :disabled="context.status !== 'ANSWERING' || busy" @click="submit(false)">提交答卷</el-button></div>
           <el-result v-if="result" icon="success" title="评分完成" :sub-title="`${result.totalScore} / ${result.maxScore} 分 · ${result.submissionType === 'AUTO_SUBMITTED' ? '超时自动交卷' : '手动交卷'}`"/>
         </template>
-        <el-empty v-else description="输入考试ID后，开始或恢复你的考试。演示考试ID为1。" />
+        <el-empty v-else description="在“可参加考试”中选择考试；也可输入考试ID开始或恢复答题。" />
       </el-tab-pane>
-      <el-tab-pane label="我的成绩" name="scores">
+      <el-tab-pane v-if="isStudent" label="我的成绩" name="scores">
         <div class="actions"><el-button :loading="busy" @click="loadScores">查询成绩</el-button></div>
         <el-table :data="records" empty-text="暂无成绩，请点击查询"><el-table-column prop="examTitle" label="考试"/><el-table-column prop="totalScore" label="得分"/><el-table-column prop="maxScore" label="满分"/><el-table-column prop="submittedAt" label="交卷时间" min-width="170"/></el-table>
         <el-pagination v-model:current-page="page" :page-size="10" :total="total" layout="prev, pager, next" :disabled="busy" @current-change="loadScores" />
@@ -125,6 +131,6 @@ onUnmounted(() => clearInterval(timer))
   </main>
 </template>
 
-<style>
-body{margin:0;background:#f3f6fb;color:#20314c;font-family:system-ui,'Microsoft YaHei',sans-serif}main{max-width:1080px;margin:auto;padding:32px 24px 80px}header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}h1{font-size:30px;margin:8px 0}header small{letter-spacing:2px;color:#3568a8}p{color:#64748b}.toolbar{display:flex;gap:20px;flex-wrap:wrap;padding:24px 0}.toolbar label{display:grid;gap:8px;flex:1;min-width:160px}.actions{display:flex;gap:12px;margin:20px 0;flex-wrap:wrap}article{background:white;border:1px solid #e2e8f0;border-radius:12px;padding:24px;margin:16px 0}.question-title{display:flex;justify-content:space-between;align-items:center}h3{line-height:1.7}.el-radio-group,.el-checkbox-group{display:flex;flex-direction:column;align-items:flex-start;gap:12px}.summary{display:flex;gap:24px;align-items:center;flex-wrap:wrap}.summary strong{font-size:24px;color:#2563eb}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}.metrics article{padding:20px}.bar{display:grid;grid-template-columns:90px 1fr;align-items:center;margin:20px 0}.el-pagination{margin-top:24px}@media(max-width:600px){main{padding:20px 14px}header{align-items:flex-start}header .el-tag{display:none}h1{font-size:25px}article{padding:18px}}
+<style scoped>
+.exam-page{margin:0;background:#f3f6fb;color:#20314c;font-family:system-ui,'Microsoft YaHei',sans-serif}main{max-width:1080px;margin:auto;padding:32px 24px 80px}header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}h1{font-size:30px;margin:8px 0}header small{letter-spacing:2px;color:#3568a8}p{color:#64748b}.toolbar{display:flex;gap:20px;flex-wrap:wrap;padding:24px 0}.toolbar label{display:grid;gap:8px;flex:1;min-width:160px}.actions{display:flex;gap:12px;margin:20px 0;flex-wrap:wrap}article{background:white;border:1px solid #e2e8f0;border-radius:12px;padding:24px;margin:16px 0}.question-title{display:flex;justify-content:space-between;align-items:center}h3{line-height:1.7}.el-radio-group,.el-checkbox-group{display:flex;flex-direction:column;align-items:flex-start;gap:12px}.summary{display:flex;gap:24px;align-items:center;flex-wrap:wrap}.summary strong{font-size:24px;color:#2563eb}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}.metrics article{padding:20px}.bar{display:grid;grid-template-columns:90px 1fr;align-items:center;margin:20px 0}.el-pagination{margin-top:24px}@media(max-width:600px){main{padding:20px 14px}header{align-items:flex-start}header .el-tag{display:none}h1{font-size:25px}article{padding:18px}}
 </style>

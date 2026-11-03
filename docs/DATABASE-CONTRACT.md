@@ -184,3 +184,8 @@ attempt_id引用exam_attempt.id。exam_id和student_id经答卷关联获取，�
 - MySQL使用InnoDB和北京时间；数据库不得向前端直接暴露。
 - demo使用H2 MySQL兼容模式，仅用于独立演示；重启会清空。
 - MySQL环境由任务2提供，导入脚本前先核对已有表结构；IF NOT EXISTS不执行结构迁移，不应掩盖字段不一致。
+
+
+## 2026-11-03汇总SQL
+
+sql/schema-all.sql按当前实际实现汇总认证题库、试卷考试及答题成绩表；不增加字段，不执行DROP或DELETE。资格查询使用实际sys_user.status=1、deleted=0、sys_role.code=STUDENT。旧库字段差异须单独迁移，CREATE IF NOT EXISTS不迁移已存在表。

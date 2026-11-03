@@ -112,3 +112,8 @@ status结束后为GRADED，submissionType保留SUBMITTED或AUTO_SUBMITTED。后�
 ## 待联调事项
 
 上游详细字段、稳定选项key、主键生成策略及JSON大整数、教师权限范围、题目快照策略、及格线来源、独立时长、多次补考和MySQL实机事务行为。
+
+
+## 2026-11-03参与规则补记
+
+本轮不新增接口。Docker考试资格从固定演示ID改为sys_user与sys_role实时校验启用、未删除的学生，所有此类学生可参加已发布且时间有效的考试。是本轮课程实现决定，待全组确认；不等同班级报名。学生界面接通GET /api/exams/available，教师编辑界面接通已有PUT接口。

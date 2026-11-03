@@ -21,6 +21,7 @@ class PaperExamServiceTest {
     private static final Actor STUDENT = new Actor(100L, "STUDENT");
 
     @Autowired PaperExamService service;
+    @Autowired java.time.Clock clock;
 
     @Test
     void teacherCanAssemblePublishAndScheduleAnExamForStudents() {
@@ -41,7 +42,7 @@ class PaperExamServiceTest {
         assertThrows(BusinessException.class, () -> service.addQuestion(TEACHER, paperId,
             new PaperQuestionRequest(13L, null, BigDecimal.ONE)));
 
-        LocalDateTime start = LocalDateTime.now().withNano(0).plusDays(1);
+        LocalDateTime start = LocalDateTime.now(clock).withNano(0).plusDays(1);
         ExamView exam = service.createExam(TEACHER,
             new ExamRequest(paper.paperId(), "集成测试考试", start, start.plusHours(2)));
         assertFalse(exam.published());
@@ -80,7 +81,7 @@ class PaperExamServiceTest {
         service.addQuestion(TEACHER, paper.paperId(), new PaperQuestionRequest(11L, null, BigDecimal.ONE));
         service.publishPaper(TEACHER, paper.paperId());
         var unpublished = service.createExam(TEACHER, new ExamRequest(paper.paperId(),
-            "未发布考试", LocalDateTime.now().plusDays(1), LocalDateTime.now().plusDays(2)));
+            "未发布考试", LocalDateTime.now(clock).plusDays(1), LocalDateTime.now(clock).plusDays(2)));
         assertThrows(BusinessException.class, () -> service.exam(STUDENT, unpublished.examId()));
     }
 }

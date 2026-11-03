@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PaperExamApiTest {
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
+    @Autowired java.time.Clock clock;
 
     @Test
     void teacherCanPublishExamAndStudentCanStartIt() throws Exception {
@@ -42,7 +43,7 @@ class PaperExamApiTest {
         mvc.perform(post("/api/papers/" + paperId + "/publish").header("Authorization", teacher))
             .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("PUBLISHED"));
 
-        LocalDateTime start = LocalDateTime.now().withNano(0).minusMinutes(1);
+        LocalDateTime start = LocalDateTime.now(clock).withNano(0).minusMinutes(1);
         LocalDateTime end = start.plusHours(1);
         DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String examRequest = json.writeValueAsString(Map.of(

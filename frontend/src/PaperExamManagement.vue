@@ -108,6 +108,18 @@ async function createPaper() {
   })
 }
 
+async function renamePaper(paper) {
+  try {
+    const { value } = await ElMessageBox.prompt('请输入试卷名称', '修改草稿试卷', { inputValue: paper.paperName, inputValidator: v => Boolean(v?.trim()) && v.trim().length <= 150 || '名称为1到150个字符' })
+    await perform(() => call('put', `/papers/${paper.paperId}`, { paperName: value.trim() }))
+  } catch { /* 取消编辑 */ }
+}
+const editingExamId = ref(null)
+function editExam(exam) {
+  editingExamId.value = exam.examId; examName.value = exam.examName
+  selectedPaperId.value = exam.paperId; startAt.value = exam.startAt; endAt.value = exam.endAt
+}
+function cancelExamEdit() { editingExamId.value = null; examName.value = ''; defaultSchedule() }
 async function addQuestion() {
   if (!activePaperId.value || !selectedQuestionId.value) return
   await perform(async () => {
@@ -136,14 +148,15 @@ async function archivePaper(paper) {
 
 async function createExam() {
   await perform(async () => {
-    await call('post', '/managed/exams', {
+    await call(editingExamId.value ? 'put' : 'post', editingExamId.value ? `/managed/exams/${editingExamId.value}` : '/managed/exams', {
       paperId: selectedPaperId.value,
       examName: examName.value,
       startAt: startAt.value,
       endAt: endAt.value
     })
-    examName.value = ''
-    ElMessage.success('考试已创建为未发布状态')
+    const edited = Boolean(editingExamId.value)
+    cancelExamEdit()
+    ElMessage.success(edited ? '考试配置已更新' : '考试已创建为未发布状态')
   })
 }
 
@@ -192,6 +205,7 @@ onMounted(() => {
         </el-form>
 
         <el-table :data="papers" highlight-current-row @row-click="paper => activePaperId = paper.paperId">
+          <el-table-column prop="paperId" label="试卷ID" width="90" />
           <el-table-column prop="paperName" label="试卷名称" min-width="200" />
           <el-table-column prop="totalScore" label="总分" width="100" />
           <el-table-column label="题数" width="90">
@@ -204,8 +218,9 @@ onMounted(() => {
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="160" fixed="right">
+          <el-table-column label="操作" width="220" fixed="right">
             <template #default="{ row }">
+              <el-button v-if="row.status === 'DRAFT'" link @click.stop="renamePaper(row)">改名</el-button>
               <el-button v-if="row.status === 'DRAFT'" link type="primary" @click.stop="activePaperId = row.paperId">组卷</el-button>
               <el-button v-if="row.status === 'DRAFT'" link type="success" :disabled="!row.questions.length" @click.stop="activePaperId = row.paperId; publishPaper()">发布</el-button>
               <el-button v-if="row.status !== 'ARCHIVED'" link type="danger" @click.stop="archivePaper(row)">归档</el-button>
@@ -260,9 +275,11 @@ onMounted(() => {
           <el-form-item label="结束时间">
             <el-date-picker v-model="endAt" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" format="YYYY-MM-DD HH:mm" />
           </el-form-item>
-          <el-button type="primary" :disabled="!examName.trim() || !selectedPaperId || !startAt || !endAt" :loading="loading" @click="createExam">创建考试</el-button>
+          <el-button type="primary" :disabled="!examName.trim() || !selectedPaperId || !startAt || !endAt" :loading="loading" @click="createExam">{{ editingExamId ? '保存修改' : '创建考试' }}</el-button>
+          <el-button v-if="editingExamId" @click="cancelExamEdit">取消编辑</el-button>
         </el-form>
         <el-table :data="exams" empty-text="暂无考试">
+          <el-table-column prop="examId" label="考试ID" width="90" />
           <el-table-column prop="examName" label="考试名称" min-width="180" />
           <el-table-column prop="paperId" label="试卷ID" width="90" />
           <el-table-column prop="totalScore" label="总分" width="90" />
@@ -275,8 +292,9 @@ onMounted(() => {
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="130" fixed="right">
+          <el-table-column label="操作" width="190" fixed="right">
             <template #default="{ row }">
+              <el-button v-if="!row.published && row.status === 'NOT_STARTED'" link @click="editExam(row)">编辑</el-button>
               <el-button v-if="!row.published" link type="success" :loading="loading" @click="publishExam(row)">发布</el-button>
               <el-button v-else-if="row.status === 'NOT_STARTED'" link type="warning" :loading="loading" @click="unpublishExam(row)">撤回</el-button>
             </template>
@@ -286,7 +304,8 @@ onMounted(() => {
     </template>
 
     <el-table v-else :data="available" v-loading="loading" empty-text="暂无可参加的考试">
-      <el-table-column prop="examName" label="考试名称" min-width="220" />
+      <el-table-column prop="examId" label="考试ID" width="90" />
+          <el-table-column prop="examName" label="考试名称" min-width="220" />
       <el-table-column prop="totalScore" label="满分" width="100" />
       <el-table-column prop="startAt" label="开始时间" min-width="170" />
       <el-table-column prop="endAt" label="结束时间" min-width="170" />
